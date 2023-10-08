@@ -1,3 +1,4 @@
+import math
 import re
 
 from django.db import models
@@ -14,6 +15,12 @@ class TicketStatus(models.TextChoices):
     CANCELLED = 'Cancelled', _('Cancelled')
 
 
+class TravelModes(models.TextChoices):
+    CAR = 'Car', _('Car')
+    FLIGHT = 'Flight', _('Flight')
+    TRAIN = 'Train', _('Train')
+
+
 def is_valid_mobile(mobile):
     """
         Function to check whether the mobile no is valid or not.
@@ -24,7 +31,30 @@ def is_valid_mobile(mobile):
     return re.fullmatch(regex, mobile)
 
 
-def calculate_price(source, destination):
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """
+        Function to calculate distance between the source and destination.
+
+        This method takes latitude and longitude of source and destination and returns distance based on Haversine formula.
+    """
+    # Radius of the Earth in kilometers
+    earth_radius = 6371.0
+
+    # Converting latitude and longitude from degrees to radians
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+
+    dlon = lon2_rad - lon1_rad
+    dlat = lat2_rad - lat1_rad
+    a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = earth_radius * c
+    return distance
+
+
+def calculate_price_car(source, destination):
     """
         Function to calculate price between the source and destination.
 
@@ -32,11 +62,32 @@ def calculate_price(source, destination):
     """
     base_fare = 50
     price_per_km = 7
-
-    lat1, lon1 = source.lat, source.long
-    lat2, lon2 = destination.lat, destination.long
-    distance = abs(lat1 - lat2) + abs(lon1 - lon2)
-
+    distance = calculate_distance(source.lat, source.long, destination.lat, destination.long)
     price = base_fare + (distance * price_per_km)
+    return price
 
+
+def calculate_price_flight(source, destination):
+    """
+        Function to calculate price between the source and destination.
+
+        This method takes source and destination and returns price of travelling in flight(economy) based on distance and price per km.
+    """
+    base_fare = 1000
+    price_per_km = 5
+    distance = calculate_distance(source.lat, source.long, destination.lat, destination.long)
+    price = base_fare + (distance * price_per_km)
+    return price
+
+
+def calculate_price_train(source, destination):
+    """
+        Function to calculate price between the source and destination.
+
+        This method takes source and destination and returns price of travelling in train(3rd AC class) based on distance and price per km.
+    """
+    base_fare = 300
+    price_per_km = 3
+    distance = calculate_distance(source.lat, source.long, destination.lat, destination.long)
+    price = base_fare + (distance * price_per_km)
     return price

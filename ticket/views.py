@@ -10,7 +10,8 @@ from .models import Location, Ticket
 from .serializers import RegistrationSerializer, LoginSerializer, LocationSerializer, TicketSerializer
 from uuid import uuid4
 
-from .utils import calculate_price, TicketStatus, JWT_SECRET, is_valid_mobile
+from .utils import calculate_price_car, calculate_price_flight, calculate_price_train, TicketStatus, JWT_SECRET, \
+    is_valid_mobile, TravelModes
 from datetime import datetime
 
 
@@ -116,16 +117,28 @@ def tickets(request):
             if Ticket.objects.filter(source=serializer.validated_data.get('source'),
                                      destination=serializer.validated_data.get('destination'),
                                      travel_date=serializer.validated_data.get('travel_date'),
+                                     travel_mode=serializer.validated_data.get('travel_mode'),
                                      seat_number=serializer.validated_data.get('seat_number'),
                                      status=TicketStatus.CONFIRMED).exists():
                 return Response({'message': 'Seat already booked'}, status=status.HTTP_400_BAD_REQUEST)
 
-            price = calculate_price(serializer.validated_data['source'], serializer.validated_data['destination'])
+            price = 0
+            if serializer.validated_data.get('travel_mode') == TravelModes.CAR:
+                price = calculate_price_car(serializer.validated_data['source'],
+                                            serializer.validated_data['destination'])
+            elif serializer.validated_data.get('travel_mode') == TravelModes.FLIGHT:
+                price = calculate_price_flight(serializer.validated_data['source'],
+                                               serializer.validated_data['destination'])
+            elif serializer.validated_data.get('travel_mode') == TravelModes.TRAIN:
+                price = calculate_price_train(serializer.validated_data['source'],
+                                              serializer.validated_data['destination'])
+
             ticket = serializer.save(unique_ticket_id='TID-'+str(uuid4()),
                                      price=price, status=TicketStatus.CONFIRMED,
                                      created_by=request.user)
 
             # View & Cancel Ticket Url should be sent to the passenger phone via text message
+            # These urls can further be short using any URL Shortener
             passenger_ticket_token = jwt.encode({'unique_ticket_id': ticket.unique_ticket_id},
                                                 JWT_SECRET, algorithm="HS256")
             view_ticket_url = request.build_absolute_uri(reverse('view_ticket',

@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.db import models
 
-from .utils import TicketStatus
+from .utils import TicketStatus, TravelModes
 
 
 class Location(models.Model):
@@ -17,6 +17,7 @@ class Ticket(models.Model):
     source = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='source_tickets')
     destination = models.ForeignKey(Location, on_delete=models.CASCADE, related_name='destination_tickets')
     travel_date = models.DateField()
+    travel_mode = models.CharField(choices=TravelModes.choices, max_length=30)
     passenger_name = models.CharField(max_length=100)
     passenger_phone = models.CharField(max_length=10)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
